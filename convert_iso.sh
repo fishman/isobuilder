@@ -15,6 +15,7 @@ INSTALL_IMG="InstallESD.dmg"
 DESTIMG="yosemite_boot.img"
 MOUNTTMP="/tmp/buildroot"
 RUNDIR="${PWD}"
+ASSETS="${RUNDIR}/assets"
 
 kpartx () { # OUTVAR ARG1
     local _outvar=$1
@@ -87,11 +88,11 @@ allocate () {
     sleep 4
     sudo mkfs.vfat /dev/mapper/${partition}p1
     sudo mkfs.hfsplus /dev/mapper/${partition}p2
+    
     mount /dev/mapper/${partition}p1 yosemite_esd
     mount /dev/mapper/${partition}p2 yosemite_base
 
-    sudo cp NvVars "${MOUNTTMP}/yosemite_esd"
-    
+    sudo cp "${ASSETS}/NvVars" "${MOUNTTMP}/yosemite_esd"
 }
 
 extract_base () {
@@ -103,18 +104,36 @@ extract_base () {
 
     sudo cp "${MOUNTTMP}/install_esd/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base"
     sudo cp "${MOUNTTMP}/install_esd/BaseSystem.chunklist" "${MOUNTTMP}/yosemite_base"
-    sudo cp -a "${MOUNTTMP}/install_esd/Packages" "${MOUNTTMP}/yosemite_base/System/Installation/PackagesLink"
-    sudo cp "$RUNDIR/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base"
+    sudo rm "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    sudo cp -a "${MOUNTTMP}/install_esd/Packages" "${MOUNTTMP}/yosemite_base/System/Installation"
+    sudo cp "$ASSETS/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base"
+
+    echo 10.10 | sudo tee "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion"
+    sudo touch "${MOUNTTMP}/yosemite_base/.file"
+    sudo cp "$ASSETS/VolumeIcon.icns" "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
+    sudo cp "$ASSETS/DS_Store" "${MOUNTTMP}/yosemite_base/.DS_Store"
 }
 
 fix_permissions (){
     sudo chmod go+r -R "${MOUNTTMP}/yosemite_base"
-    sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" "${MOUNTTMP}/yosemite_base/Volumes"
+    sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" "${MOUNTTMP}/yosemite_base/Volumes" \
+        "${MOUNTTMP}/yosemite_base/.file"
     # ok this is a hack don't hate me
     sudo chmod 755 -R "${MOUNTTMP}/yosemite_base/"
-    sudo chmod 600 -R "${MOUNTTMP}/yosemite_base/master.passwd"
-    sudo chown nobody:nobody "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist"
+    sudo chmod 600 -R "${MOUNTTMP}/yosemite_base/etc/master.passwd" "${MOUNTTMP}/yosemite_base/.file"
+    sudo chown nobody:nobody "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" \
+        "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist" \
+        "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion" \
+        "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
+
     sudo chmod 644 "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist"
+}
+
+provision () {
+    sudo mkdir -p "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
+    # sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
+    echo "diskutil eraseDisk jhfs+ "Macintosh HD" GPTFormat disk1" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
+    sudo chmod 755 "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
 }
 
 prepare
@@ -123,6 +142,5 @@ allocate
 mount_install_esd
 extract_base
 fix_permissions
-# allocate
-
+provision
 # cleanup
