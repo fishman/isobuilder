@@ -11,14 +11,23 @@ BASE=/home/timebomb/git/osx/isobuilder
 # BASE=/run/media/timebomb/Untitled
 
 EXT4=1
-# TMP="$(mktemp -d)"
-TMP="/tmp/tmp.q95UIzHEK7"
+TMP="$(mktemp -d)"
 INSTALL_FOLDER="Install OS X Yosemite.app/Contents/SharedSupport"
 INSTALL_IMG="InstallESD.dmg"
 DESTIMG="yosemite_boot.img"
 MOUNTTMP="/tmp/buildroot"
 RUNDIR="${PWD}"
 ASSETS="${RUNDIR}/assets"
+
+function control_c {
+    echo -en "\n## Caught SIGINT; Clean up and Exit \n"
+    rm ${TMP}/*
+    cleanup
+    exit $?
+}
+
+trap control_c SIGINT
+trap control_c SIGTERM
 
 kpartx () { # OUTVAR ARG1
     local _outvar=$1
