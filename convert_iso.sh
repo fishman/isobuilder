@@ -88,6 +88,7 @@ mount_base () {
 
     local partition
     kpartx partition "$DESTIMG"
+    sleep 4
 
     mount /dev/mapper/${partition}p2 yosemite_base
 }
@@ -108,7 +109,8 @@ allocate () {
 
     local partition
     kpartx partition "$DESTIMG"
-    sleep 3
+    sleep 4
+
     sudo mkfs.vfat /dev/mapper/${partition}p1
     sudo mkfs.hfsplus /dev/mapper/${partition}p2
     
@@ -169,9 +171,9 @@ fix_permissions (){
 
 provision () {
     sudo mkdir -p "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
-    # sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
-    # sudo cp "$ASSETS/OSInstall.collection" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
-    # sudo cp "$ASSETS/user-config.pkg" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
+    sudo cp "$ASSETS/OSInstall.collection" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    sudo cp "$ASSETS/user-config.pkg" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
     echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
 }
 
@@ -181,7 +183,7 @@ get_commandline_tools () {
     (
         cd "${TMP}" ; "${RUNDIR}/get_tools.sh" ${link} ; \
         7z x commandlinetoolsosx10.10forxcode6.2.dmg ; \
-        sudo mv 'Command Line Developer Tools/Command Line Tools (OS X 10.10).pkg' "${MOUNTTMP}/yosemite_base/System/Installation/Packages" ; \
+        sudo mv 'Command Line Developer Tools/Command Line Tools (OS X 10.10).pkg' "${MOUNTTMP}/yosemite_base/System/Installation/Packages/commandlinetools.pkg" ; \
         rm -rf 'Command Line Developer Tools' commandline*
     )
 
@@ -220,6 +222,7 @@ while getopts ":autmp" opt; do
             echo "Get commandline tools" >&2
             mount_base
             get_commandline_tools
+            fix_permissions
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
