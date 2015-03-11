@@ -1,5 +1,7 @@
 #!/bin/bash
 
+## Requirements, dmg2iso, aria2c, kpartx, hfsutils, 7z
+
 set -uf -o pipefail
 # set -e
 shopt -s extglob
@@ -9,7 +11,8 @@ BASE=/home/timebomb/git/osx/isobuilder
 # BASE=/run/media/timebomb/Untitled
 
 EXT4=1
-TMP="tmp"
+# TMP="$(mktemp -d)"
+TMP="/tmp/tmp.q95UIzHEK7"
 INSTALL_FOLDER="Install OS X Yosemite.app/Contents/SharedSupport"
 INSTALL_IMG="InstallESD.dmg"
 DESTIMG="yosemite_boot.img"
@@ -35,6 +38,7 @@ prepare () {
     mkdir -p "${MOUNTTMP}/install_esd"
     mkdir -p "${MOUNTTMP}/yosemite_esd"
     mkdir -p "${MOUNTTMP}/yosemite_base"
+    mkdir -p "${MOUNTTMP}/basesystem"
 }
 
 mount () {
@@ -56,6 +60,7 @@ cleanup () {
 
     if [ -d "${BASE}" ]; then
         mounted "${MOUNTTMP}/install_esd" && sudo umount "${MOUNTTMP}/install_esd"
+        kpartd "${BASE}/${INSTALL_FOLDER}/${INSTALL_IMG//dmg/img}"
         ( cd "${BASE}/${INSTALL_FOLDER}" ; kpartd "${INSTALL_IMG//dmg/img}" )
     fi
 }
@@ -64,9 +69,18 @@ mount_install_esd () {
     mounted install_esd && return
     # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
     local partition
-    ( cd "${BASE}/${INSTALL_FOLDER}";  kpartx partition "${INSTALL_IMG//dmg/img}" )
+    kpartx partition "${BASE}/${INSTALL_FOLDER}/${INSTALL_IMG//dmg/img}"
     # dmg2img "${INSTALL_IMG}"
     mount /dev/mapper/${partition}p2 install_esd
+}
+
+mount_base () {
+    mounted yosemite_base && return
+
+    local partition
+    kpartx partition "$DESTIMG"
+
+    mount /dev/mapper/${partition}p2 yosemite_base
 }
 
 allocate () {
@@ -85,7 +99,7 @@ allocate () {
 
     local partition
     kpartx partition "$DESTIMG"
-    sleep 4
+    sleep 3
     sudo mkfs.vfat /dev/mapper/${partition}p1
     sudo mkfs.hfsplus /dev/mapper/${partition}p2
     
@@ -95,19 +109,33 @@ allocate () {
     sudo cp "${ASSETS}/NvVars" "${MOUNTTMP}/yosemite_esd"
 }
 
+
+copy_base () {
+    echo "${MOUNTTMP}/install_esd/BaseSystem.dmg"
+    dmg2img -i "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o "${TMP}/BaseSystem.img"
+
+    local partition
+    kpartx partition "${TMP}/BaseSystem.img"
+    mount /dev/mapper/${partition}p2 basesystem
+    sudo sh -c "cp -a ${MOUNTTMP}/basesystem/* ${MOUNTTMP}/yosemite_base"
+    sudo umount "${MOUNTTMP}/basesystem"
+
+    kpartd "${TMP}/BaseSystem.img"
+    rm "${TMP}/BaseSystem.img"
+}
+
 extract_base () {
     echo "${MOUNTTMP}/install_esd/BaseSystem.dmg"
+    copy_base
     # hdutil crashes the kernel
     # ( cd "${MOUNTTMP}/yosemite_base" ;  sudo hdutil "${MOUNTTMP}/install_esd/BaseSystem.dmg" extractall > /dev/null )
-    ( cd "${MOUNTTMP}/yosemite_base" ;  sudo 7z x "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o"${MOUNTTMP}/yosemite_base" > /dev/null ; sudo sh -c 'mv OS\ X\ Base\ System/* .' )
-    sudo "$RUNDIR/fix_symlinks.sh" "${MOUNTTMP}/yosemite_base"
+    # ( cd "${MOUNTTMP}/yosemite_base" ;  sudo 7z x "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o"${MOUNTTMP}/yosemite_base" > /dev/null ; sudo sh -c 'mv OS\ X\ Base\ System/* .' )
 
     sudo cp "${MOUNTTMP}/install_esd/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base"
     sudo cp "${MOUNTTMP}/install_esd/BaseSystem.chunklist" "${MOUNTTMP}/yosemite_base"
     sudo rm "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
     sudo cp -a "${MOUNTTMP}/install_esd/Packages" "${MOUNTTMP}/yosemite_base/System/Installation"
     sudo cp "$ASSETS/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base"
-
     echo 10.10 | sudo tee "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion"
     sudo touch "${MOUNTTMP}/yosemite_base/.file"
     sudo cp "$ASSETS/VolumeIcon.icns" "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
@@ -115,32 +143,77 @@ extract_base () {
 }
 
 fix_permissions (){
-    sudo chmod go+r -R "${MOUNTTMP}/yosemite_base"
-    sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" "${MOUNTTMP}/yosemite_base/Volumes" \
+    sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" \
         "${MOUNTTMP}/yosemite_base/.file"
     # ok this is a hack don't hate me
-    sudo chmod 755 -R "${MOUNTTMP}/yosemite_base/"
-    sudo chmod 600 -R "${MOUNTTMP}/yosemite_base/etc/master.passwd" "${MOUNTTMP}/yosemite_base/.file"
     sudo chown nobody:nobody "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" \
         "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist" \
         "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion" \
         "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
 
-    sudo chmod 644 "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist"
+    sudo chmod 644 "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" \
+        "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" \
+        "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist"
+    sudo chmod 755 "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
+    sudo sh -c 'chmod 755 '${MOUNTTMP}/yosemite_base/System/Installation/Packages/*pkg''
 }
 
 provision () {
     sudo mkdir -p "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
     # sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
-    echo "diskutil eraseDisk jhfs+ "Macintosh HD" GPTFormat disk1" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
-    sudo chmod 755 "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
+    # sudo cp "$ASSETS/OSInstall.collection" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    # sudo cp "$ASSETS/user-config.pkg" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
 }
 
-prepare
-# cleanup
-allocate
-mount_install_esd
-extract_base
-fix_permissions
-provision
-# cleanup
+get_commandline_tools () {
+    link="/Developer_Tools/Command_Line_Tools_OS_X_10.10_for_Xcode__Xcode_6.2/commandlinetoolsosx10.10forxcode6.2.dmg"
+
+    (
+        cd "${TMP}" ; "${RUNDIR}/get_tools.sh" ${link} ; \
+        7z x commandlinetoolsosx10.10forxcode6.2.dmg ; \
+        sudo mv 'Command Line Developer Tools/Command Line Tools (OS X 10.10).pkg' "${MOUNTTMP}/yosemite_base/System/Installation/Packages" ; \
+        rm -rf 'Command Line Developer Tools' commandline*
+    )
+
+
+}
+
+while getopts ":autmp" opt; do
+    case $opt in
+        a)
+            echo "Run all tasks" >&2
+            prepare
+            allocate
+            mount_install_esd
+            extract_base
+            provision
+            get_commandline_tools
+            fix_permissions
+            cleanup
+            ;;
+
+        p)
+            echo "Reprovision" >&2
+            provision
+            fix_permissions
+            ;;
+        m)
+            echo "Mount only" >&2
+            mount_base
+            ;;
+        u)
+            echo "Unmount and remove maps" >&2
+            cleanup
+            ;;
+
+        t)
+            echo "Get commandline tools" >&2
+            mount_base
+            get_commandline_tools
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            ;;
+    esac
+done
