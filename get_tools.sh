@@ -44,3 +44,5 @@ curl \
     -L --cookie-jar ${COOKIE} --cookie ${COOKIE} \
     -A "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.1) Gecko/20090624 Firefox/3.5" \
     -O https://developer.apple.com/devcenter/download.action?path=${XCODE_PATH}
+
+rm ${COOKIE}
