@@ -34,7 +34,9 @@ fi
 [[ $(curl -s -L -c ${COOKIE} "https://developer.apple.com/downloads/index.action") =~ form[^\>]+action=\"([^\"]+)\" ]] && LOGIN_URL="https://idmsa.apple.com/IDMSWebAuth/${BASH_REMATCH[1]}"
 
 # Log in using $ADC_USER and $ADC_PASSWORD.
-curl -s -L -b $COOKIE -c $COOKIE -d "appleId=${ADC_USER}&accountPassword=${ADC_PASSWORD}" $LOGIN_URL -o /dev/null
+curl -s -L -b $COOKIE -c $COOKIE \
+    -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A" \
+    -d "appleId=${ADC_USER}&accountPassword=${ADC_PASSWORD}" $LOGIN_URL -o /dev/null
 if ! grep -q myacinfo $COOKIE 2>/dev/null; then
     echo "Login failed." 1>&2
     exit 2
@@ -42,7 +44,7 @@ fi
 
 curl \
     -L --cookie-jar ${COOKIE} --cookie ${COOKIE} \
-    -A "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.1) Gecko/20090624 Firefox/3.5" \
+    -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A" \
     -O https://developer.apple.com/devcenter/download.action?path=${XCODE_PATH}
 
 rm ${COOKIE}

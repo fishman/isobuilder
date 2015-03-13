@@ -56,7 +56,7 @@ mount () {
 }
 
 mounted () {
-    /usr/bin/mount | grep $1 > /dev/null
+    /usr/bin/env mount | grep $1 > /dev/null
 }
 
 
