@@ -3,7 +3,7 @@
 ## Requirements, dmg2iso, aria2c, kpartx, hfsutils, 7z
 
 set -uf -o pipefail
-# set -e
+set -e
 shopt -s extglob
 
 BASE=/home/timebomb/git/osx/isobuilder
@@ -32,7 +32,9 @@ trap control_c SIGTERM
 kpartx () { # OUTVAR ARG1
     local _outvar=$1
 
+    set +e
     partition=$(sudo kpartx -av "$2")
+    set -e
 
     re='\b(loop[0-9]+)'
     [[ "$partition" =~ $re ]]
