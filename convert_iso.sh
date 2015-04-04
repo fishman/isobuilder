@@ -21,7 +21,11 @@ RUNDIR="${PWD}"
 ASSETS="${RUNDIR}/assets"
 
 function finish {
-    cleanup
+    # only cleanup when something failed
+    if [ $? -ne 0 ]; then
+        red_echo "Script failed cleaning up\n"
+        cleanup
+    fi
 }
 
 function control_c {
@@ -94,8 +98,8 @@ mount_install_esd () {
     mounted install_esd && return
     # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
 
-    if [ ! -a "${INSTALL_IMG//dmg/img}" ]; then
-        dmg2img "${INSTALL_IMG}"
+    if [ ! -f "${INSTALL_FOLDER}/${INSTALL_IMG//dmg/img}" ]; then
+        dmg2img "${INSTALL_FOLDER}/${INSTALL_IMG}"
     fi
 
     (
@@ -238,6 +242,16 @@ get_commandline_tools () {
 
 }
 
+PARAM2=${2:-}
+
+if [ -n "$PARAM2" ]; then
+    INSTALL_FOLDER="$PARAM2"
+fi
+
+if [ ! -d "${INSTALL_FOLDER}" ]; then
+    red_echo "InstallESD folder does not exist\n"
+    exit 1
+fi
 while getopts ":autmp" opt; do
     case $opt in
         a)
@@ -278,3 +292,13 @@ while getopts ":autmp" opt; do
             ;;
     esac
 done
+
+if [ $OPTIND -eq 1 ]; then
+    echo "\
+Usage: convert_iso [OPTION]
+
+  -a [install_esd folder] run all jobs, optionally specify install_esd
+  -u                      unmount
+  -m                      mount only for manually modifying the install img
+    "
+fi
