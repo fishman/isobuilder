@@ -130,7 +130,7 @@ allocate () {
     parted -s "$DESTIMG" mkpart primary fat32 40s 409639s
     parted -s "$DESTIMG" name 1 EFI
     parted -s "$DESTIMG" set 1 boot on
-    parted -s "$DESTIMG" set 1 esp on
+#    parted -s "$DESTIMG" set 1 esp on
     parted -s "$DESTIMG" mkpart primary hfs+ 409640s 9GB
     parted -s "$DESTIMG" name 2 682068D2-49C0-4758-BB95-2666E0AC1E9
 
