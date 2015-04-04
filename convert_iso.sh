@@ -98,14 +98,15 @@ mount_install_esd () {
     mounted install_esd && return
     # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
 
-    if [ ! -f "${INSTALL_FOLDER}/${INSTALL_IMG//dmg/img}" ]; then
-        dmg2img "${INSTALL_FOLDER}/${INSTALL_IMG}"
+    converted_img="${BASE}/${INSTALL_IMG//dmg/img}"
+
+    if [ ! -f "${converted_img}" ]; then
+        dmg2img "${INSTALL_FOLDER}/${INSTALL_IMG}" "${converted_img}"
     fi
 
     (
       local partition ;
-      cd "${INSTALL_FOLDER}" &&
-      kpartx partition "${INSTALL_IMG//dmg/img}" &&
+      kpartx partition "${converted_img}" &&
       mount /dev/mapper/${partition}p2 install_esd
     )
 }
