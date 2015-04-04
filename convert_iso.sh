@@ -217,31 +217,6 @@ repackage () {
     cd ..
 }
 
-get_commandline_tools () {
-    # link="/Developer_Tools/Command_Line_Tools_OS_X_10.10_for_Xcode__Xcode_6.2/commandlinetoolsosx10.10forxcode6.2.dmg"
-    tools="command_line_tools_for_osx_10.10_for_xcode_6.1.dmg"
-    link="/Developer_Tools/command_line_tools_os_x_10.10_for_xcode__xcode_6.1/${tools}"
-
-
-    (
-        cd "${TMP}" ; \
-        "${RUNDIR}/get_tools.sh" ${link} ; \
-        7z x ${tools} ; \
-        cd 'Command Line Developer Tools' ; \
-        xar -xf 'Command Line Tools (OS X 10.10).pkg' ; \
-        repackage CLTools_Executables ; \
-        repackage DevSDK_OSX1010 ; \
-        mv CLTools_Executables.pkg .. ; \
-        mv DevSDK_OSX1010.pkg .. ; \
-        cd .. ; \
-        rm -rf 'Command Line Developer Tools' ; \
-        sudo cp CLTools_Executables.pkg "${MOUNTTMP}/yosemite_base/System/Installation/Packages" ; \
-        sudo cp DevSDK_OSX1010.pkg "${MOUNTTMP}/yosemite_base/System/Installation/Packages" ;
-    )
-
-
-}
-
 PARAM2=${2:-}
 
 if [ -n "$PARAM2" ]; then
@@ -261,7 +236,6 @@ while getopts ":autmp" opt; do
             mount_install_esd
             extract_base
             provision
-            get_commandline_tools
             fix_permissions
             ;;
 
@@ -284,7 +258,6 @@ while getopts ":autmp" opt; do
             green_echo "Get commandline tools" >&2
             prepare
             mount_base
-            get_commandline_tools
             fix_permissions
             ;;
         \?)
