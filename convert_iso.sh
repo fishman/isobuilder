@@ -14,6 +14,19 @@ DESTIMG="${BUILDROOT}/yosemite_boot.img"
 INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
 TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
 
+green_echo() {
+    echo -e "\e[1;32m[S] $SCRIPT: $1\e[0m"
+}
+
+red_echo() {
+    echo -en "\e[1;31m[E] $SCRIPT: $1\e[0m"
+}
+
+if [[ "$(whoami)" != "root" ]]; then
+    red_echo "Please use sudo.\n"
+    exit 2
+fi
+
 finish() {
     # Only clean up when something failed.
     if [[ $? -ne 0 ]]; then
@@ -37,14 +50,6 @@ control_c() {
 trap finish EXIT
 trap control_c SIGINT
 trap control_c SIGTERM
-
-green_echo() {
-    echo -e "\e[1;32m[S] $SCRIPT: $1\e[0m"
-}
-
-red_echo() {
-    echo -en "\e[1;31m[E] $SCRIPT: $1\e[0m"
-}
 
 do_kpartx() { # OUTVAR ARG1
     local _outvar=$1
