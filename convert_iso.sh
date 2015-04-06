@@ -171,7 +171,8 @@ extract_base() {
     sudo rm "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
 
     green_echo "Copying installation packages"
-    sudo rsync -a --progress "${MOUNTTMP}/install_esd/Packages/." "${MOUNTTMP}/yosemite_base/System/Installation/."
+    sudo mkdir "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    sudo rsync -a --progress "${MOUNTTMP}/install_esd/Packages/." "${MOUNTTMP}/yosemite_base/System/Installation/Packages/."
     sudo cp "$ASSETS/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base"
     echo 10.10 | sudo tee "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion"
     sudo touch "${MOUNTTMP}/yosemite_base/.file"
