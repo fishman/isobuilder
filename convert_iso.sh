@@ -158,7 +158,7 @@ copy_base () {
     )
 
     green_echo "Copying base"
-    sudo sh -c "rsync -a ${MOUNTTMP}/basesystem/. ${MOUNTTMP}/yosemite_base/. || true"
+    sudo sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${MOUNTTMP}/basesystem/. ${MOUNTTMP}/yosemite_base/. || true"
     sudo umount "${MOUNTTMP}/basesystem"
 
     ( cd "${TMP}" && kpartd "BaseSystem.img" )
