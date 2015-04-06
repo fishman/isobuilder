@@ -11,7 +11,6 @@ BASE=$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 # BASE=/media/Untitled
 # BASE=/run/media/timebomb/Untitled
 
-EXT4=1
 TMP="$(mktemp -d)"
 INSTALL_FOLDER="${BASE}/Install OS X Yosemite.app/Contents/SharedSupport"
 INSTALL_DMG="InstallESD.dmg"
