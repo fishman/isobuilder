@@ -9,6 +9,7 @@ SCRIPT=$(basename $0)
 CURDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 ASSETS="${CURDIR}/assets"
 BUILDROOT="${CURDIR}/buildroot"
+mkdir -p $BUILDROOT
 DESTIMG="${BUILDROOT}/yosemite_boot.img"
 INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
 TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
