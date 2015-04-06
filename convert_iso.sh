@@ -202,16 +202,6 @@ provision() {
     echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${BUILDROOT}/yosemite_base/etc/rc.cdrom.local"
 }
 
-if [[ -d "$2" ]]; then
-    if [[ -f "$2/InstallESD.dmg" ]]; then
-        INSTALLESD_DMG="$2/InstallESD.dmg"
-    elif [[ -f "$2/Contents/SharedSupport/InstallESD.dmg" ]]; then
-        INSTALLESD_DMG="$2/Contents/SharedSupport/InstallESD.dmg"
-    fi
-elif [[ -f "$2" ]]; then
-    INSTALLESD_DMG="$2"
-fi
-
 usage() {
     echo "$SCRIPT [-a|-p|-m|-u] <InstallESD.dmg or Install App directory>\n"
     echo "-a    Run all tasks and leave mounts open."
@@ -224,14 +214,32 @@ usage() {
 if [[ "$#" -gt 2 ]]; then
     red_echo "Too many arguments.\n"
     usage
+fi
 
-if [[ -z "$INSTALLESD_DMG" ]]; then
-    red_echo "Can't find InstallESD.dmg\n"
+if [[ "$#" -eq 1 ]]; then
+    PATH_ARG="$1"
+else
+    PATH_ARG="$2"
+fi
+
+INSTALLESD_DMG=""
+if [[ -d "$PATH_ARG" ]]; then
+    if [[ -f "$PATH_ARG/InstallESD.dmg" ]]; then
+        INSTALLESD_DMG="$PATH_ARG/InstallESD.dmg"
+    elif [[ -f "$PATH_ARG/Contents/SharedSupport/InstallESD.dmg" ]]; then
+        INSTALLESD_DMG="$PATH_ARG/Contents/SharedSupport/InstallESD.dmg"
+    fi
+elif [[ -f "$PATH_ARG" ]]; then
+    INSTALLESD_DMG="$PATH_ARG"
 fi
 
 while getopts ":autmp" opt; do
     case $opt in
         a)
+            if [[ -z "$INSTALLESD_DMG" ]]; then
+                red_echo "Can't find InstallESD.dmg\n"
+                usage
+            fi
             green_echo "Running all tasks" >&2
             prepare
             allocate
