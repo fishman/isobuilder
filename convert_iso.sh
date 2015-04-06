@@ -11,8 +11,8 @@ BASE="$RUNDIR"
 
 TMP="$(mktemp -d)"
 INSTALL_FOLDER="${BASE}/Install OS X Yosemite.app/Contents/SharedSupport"
-INSTALL_DMG="InstallESD.dmg"
-INSTALL_IMG="${BASE}/${INSTALL_DMG//dmg/img}"
+INSTALLESD_DMG="InstallESD.dmg"
+INSTALLESD_IMG="${BASE}/${INSTALLESD_DMG//dmg/img}"
 DESTIMG="yosemite_boot.img"
 MOUNTTMP="/tmp/buildroot"
 ASSETS="${RUNDIR}/assets"
@@ -83,10 +83,9 @@ cleanup() {
 
     ( cd . ; kpartd "${DESTIMG}" )
 
-
     if [ -d "${BASE}" ]; then
         mounted "${MOUNTTMP}/install_esd" && sudo umount "${MOUNTTMP}/install_esd"
-        kpartd "${INSTALL_IMG}"
+        kpartd "${INSTALLESD_IMG}"
     fi
 }
 
@@ -95,13 +94,13 @@ mount_install_esd() {
     # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
 
 
-    if [ ! -f "${INSTALL_IMG}" ]; then
-        dmg2img "${INSTALL_FOLDER}/${INSTALL_DMG}" "${INSTALL_IMG}"
+    if [ ! -f "${INSTALLESD_IMG}" ]; then
+        dmg2img "${INSTALL_FOLDER}/${INSTALLESD_DMG}" "${INSTALLESD_IMG}"
     fi
 
     (
       local partition ;
-      kpartx partition "${INSTALL_IMG}" &&
+      kpartx partition "${INSTALLESD_IMG}" &&
           do_mount /dev/mapper/${partition}p2 install_esd
     )
 }
