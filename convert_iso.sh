@@ -11,20 +11,25 @@ ASSETS="${CURDIR}/assets"
 BUILDROOT="${CURDIR}/buildroot"
 DESTIMG="${BUILDROOT}/yosemite_boot.img"
 INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
-TMP="$(mktemp -d)"
+TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
 
 finish() {
-    # only cleanup when something failed
-    if [ $? -ne 0 ]; then
+    # Only clean up when something failed.
+    if [[ $? -ne 0 ]]; then
         red_echo "Script failed cleaning up\n"
         cleanup
+    fi
+
+    # Remove temporary directory.
+    if [[ -d $TMPDIR ]]; then
+        rm -f $TMPDIR/*
+        rmdir $TMPDIR
     fi
 }
 
 control_c() {
     red_echo "Caught SIGINT; Clean up and Exit\n"
     cleanup
-    rm ${TMP}/*
     exit $?
 }
 
@@ -133,11 +138,11 @@ allocate() {
 }
 
 copy_base() {
-    dmg2img -i "${BUILDROOT}/install_esd/BaseSystem.dmg" -o "${TMP}/BaseSystem.img"
+    dmg2img -i "${BUILDROOT}/install_esd/BaseSystem.dmg" -o "${TMPDIR}/BaseSystem.img"
 
     (
       local partition ;
-      cd "${TMP}" &&
+      cd "${TMPDIR}" &&
       kpartx partition BaseSystem.img &&
       do_mount /dev/mapper/${partition}p2 basesystem
     )
@@ -146,8 +151,8 @@ copy_base() {
     sudo sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/yosemite_base/. || true"
     sudo umount "${BUILDROOT}/basesystem"
 
-    ( cd "${TMP}" && kpartd "BaseSystem.img" )
-    rm "${TMP}/BaseSystem.img"
+    ( cd "${TMPDIR}" && kpartd "BaseSystem.img" )
+    rm "${TMPDIR}/BaseSystem.img"
 }
 
 extract_base() {
