@@ -54,7 +54,12 @@ trap control_c SIGTERM
 do_kpartx() { # OUTVAR ARG1
     local _outvar=$1
 
-    partition=$(kpartx -av "$2" || true)
+    dn="$(dirname $2)"
+    fn="$(basename $2)"
+    pushd $dn
+    partition=$(kpartx -av "$fn" || true)
+    popd
+
     sleep 2
 
     re='\b(loop[0-9]+)'
@@ -63,7 +68,11 @@ do_kpartx() { # OUTVAR ARG1
 }
 
 do_kpartx_d() {
-    kpartx -d "$1"
+    dn="$(dirname $1)"
+    fn="$(basename $1)"
+    pushd $dn
+    kpartx -d "$fn"
+    popd
 }
 
 prepare() {
@@ -102,7 +111,7 @@ mount_install_esd() {
     fi
 
     (
-      local partition ;
+      local partition;
       do_kpartx partition "$INSTALLESD_IMG" &&
           do_mount /dev/mapper/${partition}p2 install_esd
     )
@@ -147,9 +156,8 @@ copy_base() {
     dmg2img -i "${BUILDROOT}/install_esd/BaseSystem.dmg" -o "${TMPDIR}/BaseSystem.img"
 
     (
-      local partition ;
-      cd "${TMPDIR}" &&
-          do_kpartx partition BaseSystem.img &&
+      local partition;
+      do_kpartx partition "${TMPDIR}/BaseSystem.img" &&
       do_mount /dev/mapper/${partition}p2 basesystem
     )
 
@@ -157,7 +165,7 @@ copy_base() {
     sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/yosemite_base/. || true"
     umount "${BUILDROOT}/basesystem"
 
-    ( cd "${TMPDIR}" && do_kpartx_d "BaseSystem.img" )
+    do_kpartx_d "${TMPDIR}/BaseSystem.img"
     rm "${TMPDIR}/BaseSystem.img"
 }
 
