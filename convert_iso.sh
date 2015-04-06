@@ -148,7 +148,7 @@ copy_base() {
       local partition ;
       cd "${TMP}" &&
       kpartx partition BaseSystem.img &&
-      do_mount /dev/mapper/${partition}p2 "${MOUNTTMP}/basesystem"
+      do_mount /dev/mapper/${partition}p2 basesystem
     )
 
     green_echo "Copying base"
