@@ -6,16 +6,12 @@ set -e -uf -o pipefail
 shopt -s extglob
 
 SCRIPT=$(basename $0)
-RUNDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
-BASE="$RUNDIR"
-
+CURDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+ASSETS="${CURDIR}/assets"
+BUILDROOT="${CURDIR}/buildroot"
+DESTIMG="${BUILDROOT}/yosemite_boot.img"
+INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
 TMP="$(mktemp -d)"
-INSTALL_FOLDER="${BASE}/Install OS X Yosemite.app/Contents/SharedSupport"
-INSTALLESD_DMG="InstallESD.dmg"
-INSTALLESD_IMG="${BASE}/${INSTALLESD_DMG//dmg/img}"
-DESTIMG="yosemite_boot.img"
-MOUNTTMP="/tmp/buildroot"
-ASSETS="${RUNDIR}/assets"
 
 finish() {
     # only cleanup when something failed
@@ -60,15 +56,15 @@ kpartd() {
 }
 
 prepare() {
-    mkdir -p "${MOUNTTMP}/install_esd"
-    mkdir -p "${MOUNTTMP}/yosemite_esd"
-    mkdir -p "${MOUNTTMP}/yosemite_base"
-    mkdir -p "${MOUNTTMP}/basesystem"
+    mkdir -p "${BUILDROOT}/install_esd"
+    mkdir -p "${BUILDROOT}/yosemite_esd"
+    mkdir -p "${BUILDROOT}/yosemite_base"
+    mkdir -p "${BUILDROOT}/basesystem"
 }
 
 do_mount() {
-    echo "Mounting $1 on ${MOUNTTMP}/$2"
-    sudo mount $1 "${MOUNTTMP}/$2"
+    echo "Mounting $1 on ${BUILDROOT}/$2"
+    sudo mount $1 "${BUILDROOT}/$2"
 }
 
 mounted() {
@@ -77,30 +73,26 @@ mounted() {
 
 cleanup() {
     green_echo "Cleaning up"
-    mounted "${MOUNTTMP}/yosemite_esd" && sudo umount "${MOUNTTMP}/yosemite_esd"
-    mounted "${MOUNTTMP}/yosemite_base" && sudo umount "${MOUNTTMP}/yosemite_base"
-    mounted "${MOUNTTMP}/basesystem" && sudo umount "${MOUNTTMP}/basesystem"
+    mounted "${BUILDROOT}/yosemite_esd" && sudo umount "${BUILDROOT}/yosemite_esd"
+    mounted "${BUILDROOT}/yosemite_base" && sudo umount "${BUILDROOT}/yosemite_base"
+    mounted "${BUILDROOT}/basesystem" && sudo umount "${BUILDROOT}/basesystem"
 
     ( cd . ; kpartd "${DESTIMG}" )
 
-    if [ -d "${BASE}" ]; then
-        mounted "${MOUNTTMP}/install_esd" && sudo umount "${MOUNTTMP}/install_esd"
-        kpartd "${INSTALLESD_IMG}"
-    fi
+    mounted "${BUILDROOT}/install_esd" && sudo umount "${BUILDROOT}/install_esd"
+    kpartd "${INSTALLESD_IMG}"
 }
 
 mount_install_esd() {
     mounted install_esd && return
-    # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
 
-
-    if [ ! -f "${INSTALLESD_IMG}" ]; then
-        dmg2img "${INSTALL_FOLDER}/${INSTALLESD_DMG}" "${INSTALLESD_IMG}"
+    if [ ! -f "$INSTALLESD_IMG" ]; then
+        dmg2img "$INSTALLESD_DMG" "$INSTALLESD_IMG"
     fi
 
     (
       local partition ;
-      kpartx partition "${INSTALLESD_IMG}" &&
+      kpartx partition "$INSTALLESD_IMG" &&
           do_mount /dev/mapper/${partition}p2 install_esd
     )
 }
@@ -137,11 +129,11 @@ allocate() {
     do_mount /dev/mapper/${partition}p1 yosemite_esd
     do_mount /dev/mapper/${partition}p2 yosemite_base
 
-    sudo cp "${ASSETS}/NvVars" "${MOUNTTMP}/yosemite_esd"
+    sudo cp "${ASSETS}/NvVars" "${BUILDROOT}/yosemite_esd"
 }
 
 copy_base() {
-    dmg2img -i "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o "${TMP}/BaseSystem.img"
+    dmg2img -i "${BUILDROOT}/install_esd/BaseSystem.dmg" -o "${TMP}/BaseSystem.img"
 
     (
       local partition ;
@@ -151,70 +143,74 @@ copy_base() {
     )
 
     green_echo "Copying base"
-    sudo sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${MOUNTTMP}/basesystem/. ${MOUNTTMP}/yosemite_base/. || true"
-    sudo umount "${MOUNTTMP}/basesystem"
+    sudo sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/yosemite_base/. || true"
+    sudo umount "${BUILDROOT}/basesystem"
 
     ( cd "${TMP}" && kpartd "BaseSystem.img" )
     rm "${TMP}/BaseSystem.img"
 }
 
 extract_base() {
-    green_echo "Extract ${MOUNTTMP}/install_esd/BaseSystem.dmg"
+    green_echo "Extract ${BUILDROOT}/install_esd/BaseSystem.dmg"
     copy_base
     # hdutil crashes the kernel
-    # ( cd "${MOUNTTMP}/yosemite_base" ;  sudo hdutil "${MOUNTTMP}/install_esd/BaseSystem.dmg" extractall > /dev/null )
-    # ( cd "${MOUNTTMP}/yosemite_base" ;  sudo 7z x "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o"${MOUNTTMP}/yosemite_base" > /dev/null ; sudo sh -c 'mv OS\ X\ Base\ System/* .' )
+    # ( cd "${BUILDROOT}/yosemite_base" ;  sudo hdutil "${BUILDROOT}/install_esd/BaseSystem.dmg" extractall > /dev/null )
+    # ( cd "${BUILDROOT}/yosemite_base" ;  sudo 7z x "${BUILDROOT}/install_esd/BaseSystem.dmg" -o"${BUILDROOT}/yosemite_base" > /dev/null ; sudo sh -c 'mv OS\ X\ Base\ System/* .' )
 
-    sudo cp "${MOUNTTMP}/install_esd/BaseSystem.dmg" "${MOUNTTMP}/yosemite_base"
-    sudo cp "${MOUNTTMP}/install_esd/BaseSystem.chunklist" "${MOUNTTMP}/yosemite_base"
-    sudo rm "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
+    sudo cp "${BUILDROOT}/install_esd/BaseSystem.dmg" "${BUILDROOT}/yosemite_base"
+    sudo cp "${BUILDROOT}/install_esd/BaseSystem.chunklist" "${BUILDROOT}/yosemite_base"
+    sudo rm "${BUILDROOT}/yosemite_base/System/Installation/Packages"
 
     green_echo "Copying installation packages"
-    sudo mkdir "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
-    sudo rsync -a --progress "${MOUNTTMP}/install_esd/Packages/." "${MOUNTTMP}/yosemite_base/System/Installation/Packages/."
-    sudo cp "$ASSETS/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base"
-    echo 10.10 | sudo tee "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion"
-    sudo touch "${MOUNTTMP}/yosemite_base/.file"
-    sudo cp "$ASSETS/VolumeIcon.icns" "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
-    sudo cp "$ASSETS/DS_Store" "${MOUNTTMP}/yosemite_base/.DS_Store"
+    sudo mkdir "${BUILDROOT}/yosemite_base/System/Installation/Packages"
+    sudo rsync -a --progress "${BUILDROOT}/install_esd/Packages/." "${BUILDROOT}/yosemite_base/System/Installation/Packages/."
+    sudo cp "$ASSETS/Yosemite_Background.png" "${BUILDROOT}/yosemite_base"
+    echo 10.10 | sudo tee "${BUILDROOT}/yosemite_base/.LionDiskMaker_OSVersion"
+    sudo touch "${BUILDROOT}/yosemite_base/.file"
+    sudo cp "$ASSETS/VolumeIcon.icns" "${BUILDROOT}/yosemite_base/.VolumeIcon.icns"
+    sudo cp "$ASSETS/DS_Store" "${BUILDROOT}/yosemite_base/.DS_Store"
 }
 
 fix_permissions(){
     green_echo "Fixing permissions"
-    sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" \
-        "${MOUNTTMP}/yosemite_base/.file"
+    sudo chown -R root:80 "${BUILDROOT}/yosemite_base/Applications" \
+        "${BUILDROOT}/yosemite_base/.file"
     # ok this is a hack don't hate me, 99 is nobody on a few systems
-    sudo chown 99:99 "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" \
-        "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist" \
-        "${MOUNTTMP}/yosemite_base/.LionDiskMaker_OSVersion" \
-        "${MOUNTTMP}/yosemite_base/.VolumeIcon.icns"
+    sudo chown 99:99 "${BUILDROOT}/yosemite_base/Yosemite_Background.png" "${BUILDROOT}/yosemite_base/BaseSystem.dmg" \
+        "${BUILDROOT}/yosemite_base/BaseSystem.chunklist" \
+        "${BUILDROOT}/yosemite_base/.LionDiskMaker_OSVersion" \
+        "${BUILDROOT}/yosemite_base/.VolumeIcon.icns"
 
-    sudo chmod 644 "${MOUNTTMP}/yosemite_base/Yosemite_Background.png" \
-        "${MOUNTTMP}/yosemite_base/BaseSystem.dmg" \
-        "${MOUNTTMP}/yosemite_base/BaseSystem.chunklist"
-    sudo chmod 755 "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
-    sudo sh -c 'chmod 755 '${MOUNTTMP}/yosemite_base/System/Installation/Packages/*pkg''
+    sudo chmod 644 "${BUILDROOT}/yosemite_base/Yosemite_Background.png" \
+        "${BUILDROOT}/yosemite_base/BaseSystem.dmg" \
+        "${BUILDROOT}/yosemite_base/BaseSystem.chunklist"
+    sudo chmod 755 "${BUILDROOT}/yosemite_base/etc/rc.cdrom.local"
+    sudo sh -c 'chmod 755 '${BUILDROOT}/yosemite_base/System/Installation/Packages/*pkg''
 }
 
 provision() {
     green_echo "Provisioning"
-    sudo mkdir -p "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
-    sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
-    sudo cp "$ASSETS/OSInstall.collection" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
-    sudo cp "$ASSETS/user-config.pkg" "${MOUNTTMP}/yosemite_base/System/Installation/Packages"
-    echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
+    sudo mkdir -p "${BUILDROOT}/yosemite_base/System/Installation/Packages/Extras"
+    sudo cp "$ASSETS/minstallconfig.xml" "${BUILDROOT}/yosemite_base/System/Installation/Packages/Extras"
+    sudo cp "$ASSETS/OSInstall.collection" "${BUILDROOT}/yosemite_base/System/Installation/Packages"
+    sudo cp "$ASSETS/user-config.pkg" "${BUILDROOT}/yosemite_base/System/Installation/Packages"
+    echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${BUILDROOT}/yosemite_base/etc/rc.cdrom.local"
 }
 
-PARAM2=${2:-}
-
-if [ -n "$PARAM2" ]; then
-    INSTALL_FOLDER="$PARAM2"
+if [[ -d "$2" ]]; then
+    if [[ -f "$2/InstallESD.dmg" ]]; then
+        INSTALLESD_DMG="$2/InstallESD.dmg"
+    elif [[ -f "$2/Contents/SharedSupport/InstallESD.dmg" ]]; then
+        INSTALLESD_DMG="$2/Contents/SharedSupport/InstallESD.dmg"
+    fi
+elif [[ -f "$2" ]]; then
+    INSTALLESD_DMG="$2"
 fi
 
-if [ ! -d "${INSTALL_FOLDER}" ]; then
-    red_echo "InstallESD folder does not exist\n"
-    exit 1
+if [[ -z "$INSTALLESD_DMG" ]]; then
+    red_echo "Can't find InstallESD.dmg\n"
 fi
+
 while getopts ":autmp" opt; do
     case $opt in
         a)
