@@ -233,6 +233,17 @@ elif [[ -f "$PATH_ARG" ]]; then
     INSTALLESD_DMG="$PATH_ARG"
 fi
 
+if [[ "$#" -eq 1 && ! -z $INSTALLESD_DMG ]]; then
+    prepare
+    allocate
+    mount_install_esd
+    extract_base
+    provision
+    fix_permissions
+    cleanup
+    exit 0
+fi
+
 while getopts ":autmp" opt; do
     case $opt in
         a)
