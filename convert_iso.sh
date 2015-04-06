@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Requirements, dmg2iso, aria2c, kpartx, hfsutils, 7z
+## Requirements, dmg2img, aria2, kpartx, hfsprogs, hfsutils, p7zip-full
 
 set -e -uf -o pipefail
 shopt -s extglob
