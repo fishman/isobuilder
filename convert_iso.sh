@@ -46,7 +46,7 @@ red_echo() {
     echo -en "\e[1;31m[E] $SCRIPT: $1\e[0m"
 }
 
-kpartx() { # OUTVAR ARG1
+do_kpartx() { # OUTVAR ARG1
     local _outvar=$1
 
     partition=$(sudo kpartx -av "$2" || true)
@@ -57,7 +57,7 @@ kpartx() { # OUTVAR ARG1
     eval $_outvar="${BASH_REMATCH[1]}"
 }
 
-kpartd() {
+do_kpartx_d() {
     sudo kpartx -d "$1"
 }
 
@@ -83,10 +83,10 @@ cleanup() {
     mounted "${BUILDROOT}/yosemite_base" && sudo umount "${BUILDROOT}/yosemite_base"
     mounted "${BUILDROOT}/basesystem" && sudo umount "${BUILDROOT}/basesystem"
 
-    ( cd . ; kpartd "${DESTIMG}" )
+    do_kpartx_d "${DESTIMG}"
 
     mounted "${BUILDROOT}/install_esd" && sudo umount "${BUILDROOT}/install_esd"
-    kpartd "${INSTALLESD_IMG}"
+    do_kpartx_d "${INSTALLESD_IMG}"
 }
 
 mount_install_esd() {
@@ -98,7 +98,7 @@ mount_install_esd() {
 
     (
       local partition ;
-      kpartx partition "$INSTALLESD_IMG" &&
+      do_kpartx partition "$INSTALLESD_IMG" &&
           do_mount /dev/mapper/${partition}p2 install_esd
     )
 }
@@ -107,7 +107,7 @@ mount_base() {
     mounted yosemite_base && return
 
     local partition
-    kpartx partition "$DESTIMG"
+    do_kpartx partition "$DESTIMG"
 
     do_mount /dev/mapper/${partition}p2 yosemite_base
 }
@@ -127,7 +127,7 @@ allocate() {
     parted -s "$DESTIMG" name 2 682068D2-49C0-4758-BB95-2666E0AC1E9
 
     local partition
-    kpartx partition "$DESTIMG"
+    do_kpartx partition "$DESTIMG"
 
     sudo mkfs.vfat /dev/mapper/${partition}p1
     sudo mkfs.hfsplus /dev/mapper/${partition}p2
@@ -144,7 +144,7 @@ copy_base() {
     (
       local partition ;
       cd "${TMPDIR}" &&
-      kpartx partition BaseSystem.img &&
+          do_kpartx partition BaseSystem.img &&
       do_mount /dev/mapper/${partition}p2 basesystem
     )
 
@@ -152,7 +152,7 @@ copy_base() {
     sudo sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/yosemite_base/. || true"
     sudo umount "${BUILDROOT}/basesystem"
 
-    ( cd "${TMPDIR}" && kpartd "BaseSystem.img" )
+    ( cd "${TMPDIR}" && do_kpartx_d "BaseSystem.img" )
     rm "${TMPDIR}/BaseSystem.img"
 }
 
