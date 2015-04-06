@@ -7,9 +7,8 @@ shopt -s extglob
 
 
 SCRIPT=$(basename $0)
-BASE=$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
-# BASE=/media/Untitled
-# BASE=/run/media/timebomb/Untitled
+RUNDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+BASE="$RUNDIR"
 
 TMP="$(mktemp -d)"
 INSTALL_FOLDER="${BASE}/Install OS X Yosemite.app/Contents/SharedSupport"
@@ -17,7 +16,6 @@ INSTALL_DMG="InstallESD.dmg"
 INSTALL_IMG="${BASE}/${INSTALL_DMG//dmg/img}"
 DESTIMG="yosemite_boot.img"
 MOUNTTMP="/tmp/buildroot"
-RUNDIR="${PWD}"
 ASSETS="${RUNDIR}/assets"
 
 function finish {
