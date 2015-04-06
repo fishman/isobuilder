@@ -17,7 +17,7 @@ TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
 finish() {
     # Only clean up when something failed.
     if [[ $? -ne 0 ]]; then
-        red_echo "Script failed cleaning up\n"
+        red_echo "Script failed, cleaning up\n"
         cleanup
     fi
 
@@ -29,7 +29,7 @@ finish() {
 }
 
 control_c() {
-    red_echo "Caught SIGINT; Clean up and Exit\n"
+    red_echo "Caught SIGINT; cleaning up\n"
     cleanup
     exit $?
 }
