@@ -5,7 +5,6 @@
 set -e -uf -o pipefail
 shopt -s extglob
 
-
 SCRIPT=$(basename $0)
 RUNDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 BASE="$RUNDIR"
@@ -18,7 +17,7 @@ DESTIMG="yosemite_boot.img"
 MOUNTTMP="/tmp/buildroot"
 ASSETS="${RUNDIR}/assets"
 
-function finish {
+finish() {
     # only cleanup when something failed
     if [ $? -ne 0 ]; then
         red_echo "Script failed cleaning up\n"
@@ -26,7 +25,7 @@ function finish {
     fi
 }
 
-function control_c {
+control_c() {
     red_echo "Caught SIGINT; Clean up and Exit\n"
     cleanup
     rm ${TMP}/*
@@ -45,7 +44,7 @@ red_echo() {
     echo -en "\e[1;31m[E] $SCRIPT: $1\e[0m"
 }
 
-kpartx () { # OUTVAR ARG1
+kpartx() { # OUTVAR ARG1
     local _outvar=$1
 
     partition=$(sudo kpartx -av "$2" || true)
@@ -56,11 +55,11 @@ kpartx () { # OUTVAR ARG1
     eval $_outvar="${BASH_REMATCH[1]}"
 }
 
-kpartd () {
+kpartd() {
     sudo kpartx -d "$1"
 }
 
-prepare () {
+prepare() {
     mkdir -p "${MOUNTTMP}/install_esd"
     mkdir -p "${MOUNTTMP}/yosemite_esd"
     mkdir -p "${MOUNTTMP}/yosemite_base"
@@ -72,12 +71,11 @@ do_mount() {
     sudo mount $1 "${MOUNTTMP}/$2"
 }
 
-mounted () {
+mounted() {
     /usr/bin/env mount | grep $1 > /dev/null
 }
 
-
-cleanup () {
+cleanup() {
     green_echo "Cleaning up"
     mounted "${MOUNTTMP}/yosemite_esd" && sudo umount "${MOUNTTMP}/yosemite_esd"
     mounted "${MOUNTTMP}/yosemite_base" && sudo umount "${MOUNTTMP}/yosemite_base"
@@ -92,7 +90,7 @@ cleanup () {
     fi
 }
 
-mount_install_esd () {
+mount_install_esd() {
     mounted install_esd && return
     # dmg iso "${INSTALL_ESD}" "${INSTALL_ESD//dmg/iso}"
 
@@ -108,7 +106,7 @@ mount_install_esd () {
     )
 }
 
-mount_base () {
+mount_base() {
     mounted yosemite_base && return
 
     local partition
@@ -117,7 +115,7 @@ mount_base () {
     do_mount /dev/mapper/${partition}p2 yosemite_base
 }
 
-allocate () {
+allocate() {
     mounted yosemite_base && return
     fallocate -l 9G "$DESTIMG"
     # use truncate for portability
@@ -143,8 +141,7 @@ allocate () {
     sudo cp "${ASSETS}/NvVars" "${MOUNTTMP}/yosemite_esd"
 }
 
-
-copy_base () {
+copy_base() {
     dmg2img -i "${MOUNTTMP}/install_esd/BaseSystem.dmg" -o "${TMP}/BaseSystem.img"
 
     (
@@ -162,7 +159,7 @@ copy_base () {
     rm "${TMP}/BaseSystem.img"
 }
 
-extract_base () {
+extract_base() {
     green_echo "Extract ${MOUNTTMP}/install_esd/BaseSystem.dmg"
     copy_base
     # hdutil crashes the kernel
@@ -182,7 +179,7 @@ extract_base () {
     sudo cp "$ASSETS/DS_Store" "${MOUNTTMP}/yosemite_base/.DS_Store"
 }
 
-fix_permissions (){
+fix_permissions(){
     green_echo "Fixing permissions"
     sudo chown -R root:80 "${MOUNTTMP}/yosemite_base/Applications" \
         "${MOUNTTMP}/yosemite_base/.file"
@@ -199,7 +196,7 @@ fix_permissions (){
     sudo sh -c 'chmod 755 '${MOUNTTMP}/yosemite_base/System/Installation/Packages/*pkg''
 }
 
-provision () {
+provision() {
     green_echo "Provisioning"
     sudo mkdir -p "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
     sudo cp "$ASSETS/minstallconfig.xml" "${MOUNTTMP}/yosemite_base/System/Installation/Packages/Extras"
@@ -229,7 +226,6 @@ while getopts ":autmp" opt; do
             provision
             fix_permissions
             ;;
-
         p)
             green_echo "Reprovision" >&2
             provision
