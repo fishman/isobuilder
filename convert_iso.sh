@@ -211,13 +211,6 @@ provision () {
     echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | sudo tee "${MOUNTTMP}/yosemite_base/etc/rc.cdrom.local"
 }
 
-repackage () {
-    mv ${1}.pkg $1
-    cd $1
-    xar --compression none -cf "../${1}.pkg" $(ls)
-    cd ..
-}
-
 PARAM2=${2:-}
 
 if [ -n "$PARAM2" ]; then
@@ -253,13 +246,6 @@ while getopts ":autmp" opt; do
         u)
             green_echo "Unmount and remove maps" >&2
             cleanup
-            ;;
-
-        t)
-            green_echo "Get commandline tools" >&2
-            prepare
-            mount_base
-            fix_permissions
             ;;
         \?)
             red_echo "Invalid option: -$OPTARG" >&2
