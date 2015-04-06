@@ -212,6 +212,19 @@ elif [[ -f "$2" ]]; then
     INSTALLESD_DMG="$2"
 fi
 
+usage() {
+    echo "$SCRIPT [-a|-p|-m|-u] <InstallESD.dmg or Install App directory>\n"
+    echo "-a    Run all tasks and leave mounts open."
+    echo "-p    Provision base image with auto-install files."
+    echo "-m    Mount existing base image directory."
+    echo "-u    Clean up mounts."
+    exit 1
+}
+
+if [[ "$#" -gt 2 ]]; then
+    red_echo "Too many arguments.\n"
+    usage
+
 if [[ -z "$INSTALLESD_DMG" ]]; then
     red_echo "Can't find InstallESD.dmg\n"
 fi
@@ -247,12 +260,6 @@ while getopts ":autmp" opt; do
     esac
 done
 
-if [ $OPTIND -eq 1 ]; then
-    echo "\
-Usage: convert_iso [OPTION]
-
-  -a [install_esd folder] run all jobs, optionally specify install_esd
-  -u                      unmount
-  -m                      mount only for manually modifying the install img
-    "
+if [[ $OPTIND -eq 1 ]]; then
+    usage
 fi
