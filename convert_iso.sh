@@ -70,7 +70,7 @@ prepare () {
     mkdir -p "${MOUNTTMP}/basesystem"
 }
 
-mount () {
+do_mount() {
     echo "Mounting $1 on ${MOUNTTMP}/$2"
     sudo mount $1 "${MOUNTTMP}/$2"
 }
@@ -107,7 +107,7 @@ mount_install_esd () {
     (
       local partition ;
       kpartx partition "${INSTALL_IMG}" &&
-      mount /dev/mapper/${partition}p2 install_esd
+          do_mount /dev/mapper/${partition}p2 install_esd
     )
 }
 
@@ -117,7 +117,7 @@ mount_base () {
     local partition
     kpartx partition "$DESTIMG"
 
-    mount /dev/mapper/${partition}p2 yosemite_base
+    do_mount /dev/mapper/${partition}p2 yosemite_base
 }
 
 allocate () {
@@ -139,9 +139,9 @@ allocate () {
 
     sudo mkfs.vfat /dev/mapper/${partition}p1
     sudo mkfs.hfsplus /dev/mapper/${partition}p2
-    
-    mount /dev/mapper/${partition}p1 yosemite_esd
-    mount /dev/mapper/${partition}p2 yosemite_base
+
+    do_mount /dev/mapper/${partition}p1 yosemite_esd
+    do_mount /dev/mapper/${partition}p2 yosemite_base
 
     sudo cp "${ASSETS}/NvVars" "${MOUNTTMP}/yosemite_esd"
 }
@@ -154,7 +154,7 @@ copy_base () {
       local partition ;
       cd "${TMP}" &&
       kpartx partition BaseSystem.img &&
-      mount /dev/mapper/${partition}p2 basesystem
+      do_mount /dev/mapper/${partition}p2 "${MOUNTTMP}/basesystem"
     )
 
     green_echo "Copying base"
