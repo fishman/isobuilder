@@ -10,9 +10,10 @@ CURDIR="$(cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
 ASSETS="${CURDIR}/assets"
 BUILDROOT="${CURDIR}/buildroot"
 mkdir -p $BUILDROOT
-DESTIMG="${BUILDROOT}/yosemite_boot.img"
+DESTIMG="${BUILDROOT}/osx_boot.img"
 INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
 TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
+[[ -z "$OSX_VERSION" ]] && OSX_VERSION="10.10"
 
 green_echo() {
     echo -e "\e[1;32m[S] $SCRIPT: $1\e[0m"
@@ -77,8 +78,8 @@ do_kpartx_d() {
 
 prepare() {
     mkdir -p "${BUILDROOT}/install_esd"
-    mkdir -p "${BUILDROOT}/yosemite_esd"
-    mkdir -p "${BUILDROOT}/yosemite_base"
+    mkdir -p "${BUILDROOT}/osx_esd"
+    mkdir -p "${BUILDROOT}/osx_base"
     mkdir -p "${BUILDROOT}/basesystem"
 }
 
@@ -93,8 +94,8 @@ mounted() {
 
 cleanup() {
     green_echo "Cleaning up"
-    mounted "${BUILDROOT}/yosemite_esd" && umount "${BUILDROOT}/yosemite_esd"
-    mounted "${BUILDROOT}/yosemite_base" && umount "${BUILDROOT}/yosemite_base"
+    mounted "${BUILDROOT}/osx_esd" && umount "${BUILDROOT}/osx_esd"
+    mounted "${BUILDROOT}/osx_base" && umount "${BUILDROOT}/osx_base"
     mounted "${BUILDROOT}/basesystem" && umount "${BUILDROOT}/basesystem"
 
     do_kpartx_d "${DESTIMG}"
@@ -118,16 +119,16 @@ mount_install_esd() {
 }
 
 mount_base() {
-    mounted yosemite_base && return
+    mounted osx_base && return
 
     local partition
     do_kpartx partition "$DESTIMG"
 
-    do_mount /dev/mapper/${partition}p2 yosemite_base
+    do_mount /dev/mapper/${partition}p2 osx_base
 }
 
 allocate() {
-    mounted yosemite_base && return
+    mounted osx_base && return
     fallocate -l 9G "$DESTIMG"
     # use truncate for portability
     # touch "$DESTIMG"
@@ -146,10 +147,10 @@ allocate() {
     mkfs.vfat /dev/mapper/${partition}p1
     mkfs.hfsplus /dev/mapper/${partition}p2
 
-    do_mount /dev/mapper/${partition}p1 yosemite_esd
-    do_mount /dev/mapper/${partition}p2 yosemite_base
+    do_mount /dev/mapper/${partition}p1 osx_esd
+    do_mount /dev/mapper/${partition}p2 osx_base
 
-    cp "${ASSETS}/NvVars" "${BUILDROOT}/yosemite_esd"
+    cp "${ASSETS}/NvVars" "${BUILDROOT}/osx_esd"
 }
 
 copy_base() {
@@ -162,7 +163,7 @@ copy_base() {
     )
 
     green_echo "Copying base"
-    sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/yosemite_base/. || true"
+    sh -c "rsync -a --exclude 'System/Library/User Template/ko.lproj/Library/FontCollections' ${BUILDROOT}/basesystem/. ${BUILDROOT}/osx_base/. || true"
     umount "${BUILDROOT}/basesystem"
 
     do_kpartx_d "${TMPDIR}/BaseSystem.img"
@@ -173,47 +174,47 @@ extract_base() {
     green_echo "Extract ${BUILDROOT}/install_esd/BaseSystem.dmg"
     copy_base
     # hdutil crashes the kernel
-    # ( cd "${BUILDROOT}/yosemite_base" ;  hdutil "${BUILDROOT}/install_esd/BaseSystem.dmg" extractall > /dev/null )
-    # ( cd "${BUILDROOT}/yosemite_base" ;  7z x "${BUILDROOT}/install_esd/BaseSystem.dmg" -o"${BUILDROOT}/yosemite_base" > /dev/null ; sh -c 'mv OS\ X\ Base\ System/* .' )
+    # ( cd "${BUILDROOT}/osx_base" ;  hdutil "${BUILDROOT}/install_esd/BaseSystem.dmg" extractall > /dev/null )
+    # ( cd "${BUILDROOT}/osx_base" ;  7z x "${BUILDROOT}/install_esd/BaseSystem.dmg" -o"${BUILDROOT}/osx_base" > /dev/null ; sh -c 'mv OS\ X\ Base\ System/* .' )
 
-    cp "${BUILDROOT}/install_esd/BaseSystem.dmg" "${BUILDROOT}/yosemite_base"
-    cp "${BUILDROOT}/install_esd/BaseSystem.chunklist" "${BUILDROOT}/yosemite_base"
-    rm "${BUILDROOT}/yosemite_base/System/Installation/Packages"
+    cp "${BUILDROOT}/install_esd/BaseSystem.dmg" "${BUILDROOT}/osx_base"
+    cp "${BUILDROOT}/install_esd/BaseSystem.chunklist" "${BUILDROOT}/osx_base"
+    rm "${BUILDROOT}/osx_base/System/Installation/Packages"
 
     green_echo "Copying installation packages"
-    mkdir "${BUILDROOT}/yosemite_base/System/Installation/Packages"
-    rsync -a --progress "${BUILDROOT}/install_esd/Packages/." "${BUILDROOT}/yosemite_base/System/Installation/Packages/."
-    cp "$ASSETS/Yosemite_Background.png" "${BUILDROOT}/yosemite_base"
-    echo 10.10 | tee "${BUILDROOT}/yosemite_base/.LionDiskMaker_OSVersion"
-    touch "${BUILDROOT}/yosemite_base/.file"
-    cp "$ASSETS/VolumeIcon.icns" "${BUILDROOT}/yosemite_base/.VolumeIcon.icns"
-    cp "$ASSETS/DS_Store" "${BUILDROOT}/yosemite_base/.DS_Store"
+    mkdir "${BUILDROOT}/osx_base/System/Installation/Packages"
+    rsync -a --progress "${BUILDROOT}/install_esd/Packages/." "${BUILDROOT}/osx_base/System/Installation/Packages/."
+    cp "$ASSETS/OSX_Background.png" "${BUILDROOT}/osx_base"
+    echo $OSX_VERSION | tee "${BUILDROOT}/osx_base/.LionDiskMaker_OSVersion"
+    touch "${BUILDROOT}/osx_base/.file"
+    cp "$ASSETS/VolumeIcon.icns" "${BUILDROOT}/osx_base/.VolumeIcon.icns"
+    cp "$ASSETS/DS_Store" "${BUILDROOT}/osx_base/.DS_Store"
 }
 
 fix_permissions(){
     green_echo "Fixing permissions"
-    chown -R root:80 "${BUILDROOT}/yosemite_base/Applications" \
-        "${BUILDROOT}/yosemite_base/.file"
+    chown -R root:80 "${BUILDROOT}/osx_base/Applications" \
+        "${BUILDROOT}/osx_base/.file"
     # ok this is a hack don't hate me, 99 is nobody on a few systems
-    chown 99:99 "${BUILDROOT}/yosemite_base/Yosemite_Background.png" "${BUILDROOT}/yosemite_base/BaseSystem.dmg" \
-        "${BUILDROOT}/yosemite_base/BaseSystem.chunklist" \
-        "${BUILDROOT}/yosemite_base/.LionDiskMaker_OSVersion" \
-        "${BUILDROOT}/yosemite_base/.VolumeIcon.icns"
+    chown 99:99 "${BUILDROOT}/osx_base/OSX_Background.png" "${BUILDROOT}/osx_base/BaseSystem.dmg" \
+        "${BUILDROOT}/osx_base/BaseSystem.chunklist" \
+        "${BUILDROOT}/osx_base/.LionDiskMaker_OSVersion" \
+        "${BUILDROOT}/osx_base/.VolumeIcon.icns"
 
-    chmod 644 "${BUILDROOT}/yosemite_base/Yosemite_Background.png" \
-        "${BUILDROOT}/yosemite_base/BaseSystem.dmg" \
-        "${BUILDROOT}/yosemite_base/BaseSystem.chunklist"
-    chmod 755 "${BUILDROOT}/yosemite_base/etc/rc.cdrom.local"
-    sh -c 'chmod 755 '${BUILDROOT}/yosemite_base/System/Installation/Packages/*pkg''
+    chmod 644 "${BUILDROOT}/osx_base/OSX_Background.png" \
+        "${BUILDROOT}/osx_base/BaseSystem.dmg" \
+        "${BUILDROOT}/osx_base/BaseSystem.chunklist"
+    chmod 755 "${BUILDROOT}/osx_base/etc/rc.cdrom.local"
+    sh -c 'chmod 755 '${BUILDROOT}/osx_base/System/Installation/Packages/*pkg''
 }
 
 provision() {
     green_echo "Provisioning"
-    mkdir -p "${BUILDROOT}/yosemite_base/System/Installation/Packages/Extras"
-    cp "$ASSETS/minstallconfig.xml" "${BUILDROOT}/yosemite_base/System/Installation/Packages/Extras"
-    cp "$ASSETS/OSInstall.collection" "${BUILDROOT}/yosemite_base/System/Installation/Packages"
-    cp "$ASSETS/user-config.pkg" "${BUILDROOT}/yosemite_base/System/Installation/Packages"
-    echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | tee "${BUILDROOT}/yosemite_base/etc/rc.cdrom.local"
+    mkdir -p "${BUILDROOT}/osx_base/System/Installation/Packages/Extras"
+    cp "$ASSETS/minstallconfig.xml" "${BUILDROOT}/osx_base/System/Installation/Packages/Extras"
+    cp "$ASSETS/OSInstall.collection" "${BUILDROOT}/osx_base/System/Installation/Packages"
+    cp "$ASSETS/user-config.pkg" "${BUILDROOT}/osx_base/System/Installation/Packages"
+    echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | tee "${BUILDROOT}/osx_base/etc/rc.cdrom.local"
 }
 
 usage() {
