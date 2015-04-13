@@ -1,0 +1,17 @@
+<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
+<installer-gui-script minSpecVersion=\"1\">
+    <pkg-ref id=\"${packageid}\">
+        <bundle-version/>
+    </pkg-ref>
+    <options customize=\"never\" require-scripts=\"false\"/>
+    <choices-outline>
+        <line choice=\"default\">
+            <line choice=\"${packageid}\"/>
+        </line>
+    </choices-outline>
+    <choice id=\"default\"/>
+    <choice id=\"${packageid}\" visible=\"false\">
+        <pkg-ref id=\"${packageid}\"/>
+    </choice>
+    <pkg-ref id=\"${packageid}\" version=\"0.1\" onConclusion=\"none\" installKBytes=\"${size}\">#base.pkg</pkg-ref>
+</installer-gui-script>

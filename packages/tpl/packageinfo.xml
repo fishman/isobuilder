@@ -1,0 +1,13 @@
+<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>
+<pkg-info overwrite-permissions=\"true\" relocatable=\"false\" identifier=\"${packageid}\" postinstall-action=\"none\" version=\"0.1\" format-version=\"2\" generator-version=\"InstallCmds-403 (13F34)\" auth=\"root\">
+    <payload numberOfFiles=\"${count}\" installKBytes=\"${size}\"/>
+    <bundle-version/>
+    <upgrade-bundle/>
+    <update-bundle/>
+    <atomic-update-bundle/>
+    <strict-identifier/>
+    <relocate/>
+    <scripts>
+        <postinstall file=\"./postinstall\"/>
+    </scripts>
+</pkg-info>

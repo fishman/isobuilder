@@ -1,0 +1,69 @@
+#!/bin/sh
+
+OSX_VERS=$(sw_vers -productVersion | awk -F "." '{print $2}')
+USER=vagrant
+PlistBuddy="/usr/libexec/PlistBuddy"
+SUBMIT_TO_APPLE=NO
+SUBMIT_TO_APP_DEVELOPERS=NO
+
+if [ $OSX_VERS -ge 10 ]; then
+  CRASHREPORTER_SUPPORT="$3/Library/Application Support/CrashReporter"
+  CRASHREPORTER_DIAG_PLIST="${CRASHREPORTER_SUPPORT}/DiagnosticMessagesHistory.plist"
+
+  if [ ! -d "${CRASHREPORTER_SUPPORT}" ]; then
+    mkdir "${CRASHREPORTER_SUPPORT}"
+    chmod 775 "${CRASHREPORTER_SUPPORT}"
+    chown root:admin "${CRASHREPORTER_SUPPORT}"
+  fi
+
+  for key in AutoSubmit AutoSubmitVersion ThirdPartyDataSubmit ThirdPartyDataSubmitVersion; do
+    $PlistBuddy -c "Delete :$key" "${CRASHREPORTER_DIAG_PLIST}" 2> /dev/null
+  done
+
+  $PlistBuddy -c "Add :AutoSubmit bool ${SUBMIT_TO_APPLE}" "${CRASHREPORTER_DIAG_PLIST}"
+  $PlistBuddy -c "Add :AutoSubmitVersion integer 4" "${CRASHREPORTER_DIAG_PLIST}"
+  $PlistBuddy -c "Add :ThirdPartyDataSubmit bool ${SUBMIT_TO_APP_DEVELOPERS}" "${CRASHREPORTER_DIAG_PLIST}"
+  $PlistBuddy -c "Add :ThirdPartyDataSubmitVersion integer 4" "${CRASHREPORTER_DIAG_PLIST}"
+fi
+
+# Override the default behavior of sshd on the target volume to be not disabled
+if [ "$OSX_VERS" -ge 10 ]; then
+    OVERRIDES_PLIST="$3/private/var/db/com.apple.xpc.launchd/disabled.plist"
+    $PlistBuddy -c 'Delete :com.openssh.sshd' "$OVERRIDES_PLIST"
+    $PlistBuddy -c 'Add :com.openssh.sshd bool False' "$OVERRIDES_PLIST"
+else
+    OVERRIDES_PLIST="$3/private/var/db/launchd.db/com.apple.launchd/overrides.plist"
+    $PlistBuddy -c 'Delete :com.openssh.sshd' "$OVERRIDES_PLIST"
+    $PlistBuddy -c 'Add :com.openssh.sshd:Disabled bool False' "$OVERRIDES_PLIST"
+fi
+
+# Add ${USER} to sudoers
+cp "$3/etc/sudoers" "$3/etc/sudoers.orig"
+echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> "$3/etc/sudoers"
+
+# Add ${USER} to admin group memberships (even though GID 80 is enough for most things)
+USER_GUID=$($PlistBuddy -c 'Print :generateduid:0' "$3/private/var/db/dslocal/nodes/Default/users/${USER}.plist")
+USER_UID=$($PlistBuddy -c 'Print :uid:0' "$3/private/var/db/dslocal/nodes/Default/users/${USER}.plist")
+$PlistBuddy -c 'Add :groupmembers: string $${USER}_GUID' "$3/private/var/db/dslocal/nodes/Default/groups/admin.plist"
+
+# Pre-create ${USER} user folder so veewee will have somewhere to scp configinfo to
+cp -a /System/Library/User\ Template/English.lproj "$3/Users/${USER}"
+
+# Suppress annoying iCloud welcome on a GUI login
+$PlistBuddy -c 'Add :DidSeeCloudSetup bool true' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c 'Add :DidSeeSyncSetup bool true' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c 'Add :DidSeeSyncSetup2 bool true' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c 'Add :ShowKeychainSyncBuddyAtLogin bool false' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c 'Add :RunNonInteractive bool true' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c "Add :LastSeenCloudProductVersion string ${sw_vers}" "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c "Add :LastSeenBuddyBuildVersion string ${sw_build}" "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+$PlistBuddy -c 'Add :GestureMovieSeen string none' "$3/Users/${USER}/Library/Preferences/com.apple.SetupAssistant.plist"
+
+# Disable loginwindow screensaver to save CPU cycles
+$PlistBuddy -c 'Add :loginWindowIdleTime integer 0' "$3/Library/Preferences/com.apple.screensaver.plist"
+
+# Fix ownership now that the above has made a Library folder as root
+chown -R $USER_UID:80 "$3/Users/${USER}"
+
+# Disable the welcome screen
+touch "$3/private/var/db/.AppleSetupDone"
