@@ -128,7 +128,7 @@ mount_base() {
 
 allocate() {
     mounted yosemite_base && return
-    fallocate -l 9G "$DESTIMG"
+    fallocate -l 8G "$DESTIMG"
     # use truncate for portability
     # touch "$DESTIMG"
     # truncate --size 9G "$DESTIMG"
