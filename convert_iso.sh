@@ -62,7 +62,7 @@ do_kpartx() { # OUTVAR ARG1
     partition=$(kpartx -av "$fn" || true)
     popd
 
-    sleep 2
+    sleep 5
 
     re='\b(loop[0-9]+)'
     [[ "$partition" =~ $re ]]
