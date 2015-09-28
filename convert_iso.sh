@@ -37,6 +37,7 @@ finish() {
 
     # Remove temporary directory.
     if [[ -d $TMPDIR ]]; then
+        rm -f $TMPDIR/*/*
         rm -f $TMPDIR/*
         rmdir $TMPDIR
     fi
