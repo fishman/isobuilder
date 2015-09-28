@@ -160,7 +160,12 @@ copy_base() {
     (
       local partition;
       do_kpartx partition "${TMPDIR}/BaseSystem.img" &&
-      do_mount /dev/mapper/${partition}p2 basesystem
+
+      if [[ "$OSX_VERSION" = "10.11" ]]; then
+          do_mount /dev/mapper/${partition}p1 basesystem
+      else
+          do_mount /dev/mapper/${partition}p2 basesystem
+      fi
     )
 
     green_echo "Copying base"
