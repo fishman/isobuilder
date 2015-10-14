@@ -220,6 +220,7 @@ provision() {
     cp "$ASSETS/minstallconfig.xml" "${BUILDROOT}/osx_base/System/Installation/Packages/Extras"
     cp "$ASSETS/OSInstall.collection" "${BUILDROOT}/osx_base/System/Installation/Packages"
     cp "$ASSETS/user-config.pkg" "${BUILDROOT}/osx_base/System/Installation/Packages"
+    cp "$ASSETS/boot-plist.pkg" "${BUILDROOT}/osx_base/System/Installation/Packages"
     echo "diskutil eraseDisk jhfs+ 'Macintosh HD' GPTFormat disk0" | tee "${BUILDROOT}/osx_base/etc/rc.cdrom.local"
 }
 

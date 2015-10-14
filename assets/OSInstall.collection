@@ -5,5 +5,6 @@
 	<string>/System/Installation/Packages/OSInstall.mpkg</string>
 	<string>/System/Installation/Packages/OSInstall.mpkg</string>
     <string>/System/Installation/Packages/user-config.pkg</string>
+    <string>/System/Installation/Packages/boot-plist.pkg</string>
 </array>
 </plist>
