@@ -59,7 +59,8 @@ do_kpartx() { # OUTVAR ARG1
     dn="$(dirname $2)"
     fn="$(basename $2)"
     pushd $dn
-    partition=$(kpartx -av "$fn" || true)
+    LOOPDEV=$(losetup -f --show "$fn")
+    partition=$(kpartx -av "$LOOPDEV" || true)
     popd
 
     sleep 5
