@@ -2,7 +2,7 @@
 
 ## Requirements, dmg2img, aria2, kpartx, hfsprogs, hfsutils, p7zip-full
 
-set -e -uf -o pipefail
+set -e -f -o pipefail
 shopt -s extglob
 
 SCRIPT=$(basename $0)
@@ -13,20 +13,14 @@ mkdir -p $BUILDROOT
 DESTIMG="${BUILDROOT}/osx_boot.img"
 INSTALLESD_IMG="${BUILDROOT}/InstallESD.img"
 TMPDIR="$(mktemp -d "${BUILDROOT}/tmp.XXXXXX")"
-[[ -z "$OSX_VERSION" ]] && OSX_VERSION="10.10"
 
 green_echo() {
-    echo -e "\e[1;32m[S] $SCRIPT: $1\e[0m"
+    echo -e "\033[1;32m[S] $SCRIPT: $1\033[0m"
 }
 
 red_echo() {
-    echo -en "\e[1;31m[E] $SCRIPT: $1\e[0m"
+    echo -en "\033[1;31m[E] $SCRIPT: $1\033[0m"
 }
-
-if [[ "$(whoami)" != "root" ]]; then
-    red_echo "Please use sudo.\n"
-    exit 2
-fi
 
 finish() {
     # Only clean up when something failed.
@@ -161,8 +155,12 @@ copy_base() {
     (
       local partition;
       do_kpartx partition "${TMPDIR}/BaseSystem.img" &&
+      
+      # Split minor out so we can do -gt with it
+      IFS='.' read -ra OSVER <<< "$OSX_VERSION"
+      MINOR=${OSVER[1]}
 
-      if [[ "$OSX_VERSION" = "10.11" ]]; then
+      if [[ $MINOR -ge 11 ]]; then
           do_mount /dev/mapper/${partition}p1 basesystem
       else
           do_mount /dev/mapper/${partition}p2 basesystem
@@ -225,13 +223,25 @@ provision() {
 }
 
 usage() {
-    echo "$SCRIPT [-a|-p|-m|-u] <InstallESD.dmg or Install App directory>\n"
+    echo "Required ENV variable: OSX_VERSION=<version> (e.g. 10.11)"
+    echo "$SCRIPT [-a|-p|-m|-u] <InstallESD.dmg or Install App directory>"
     echo "-a    Run all tasks and leave mounts open."
     echo "-p    Provision base image with auto-install files."
     echo "-m    Mount existing base image directory."
     echo "-u    Clean up mounts."
-    exit 1
+    exit 0
 }
+
+if [ -z "$OSX_VERSION" ]; then
+    red_echo "Please set OSX_VERSION to the correct OS version\n"
+    usage
+    exit 0
+fi
+
+if [[ "$(whoami)" != "root" ]]; then
+    red_echo "Please use sudo.\n"
+    exit 0
+fi
 
 if [[ "$#" -gt 2 ]]; then
     red_echo "Too many arguments.\n"
